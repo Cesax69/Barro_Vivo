@@ -1,90 +1,134 @@
 // lib/router/app_router.dart
 //
-// Configuración central de navegación con go_router (Navigator 2.0).
+// Configuración central de navegación con go_router (Navigator 2.0) – HU-02.
 //
-// Rutas definidas para HU-01:
-//   /          → SplashScreen (evaluación de sesión)
-//   /taller    → TallerHomeScreen (placeholder)
-//   /cliente   → ClienteHomeScreen (placeholder)
+// Rutas:
+//   /          → SplashScreen  (evaluación de sesión)
+//   /login     → LoginScreen
+//   /registro  → RegistroScreen
+//   /taller    → TallerHomeScreen  [requiere rol: taller]
+//   /cliente   → ClienteHomeScreen [requiere rol: cliente]
 //
-// La protección de rutas por rol se implementará en HU-02 una vez que
-// [AuthViewModel] exponga el usuario y su rol.
+// Guards (redirección automática):
+//   – Sin sesión      → redirige a /login
+//   – Rol 'taller'    → redirige a /taller
+//   – Rol 'cliente'   → redirige a /cliente
+//   – En login/reg. autenticado → redirige según rol
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
+import '../models/user_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../views/splash_screen.dart';
+import '../views/auth/login_screen.dart';
+import '../views/auth/registro_screen.dart';
 import '../views/taller/taller_home_screen.dart';
 import '../views/cliente/cliente_home_screen.dart';
 
-/// Nombres de ruta centralizados para evitar strings dispersos.
+// ── Rutas centralizadas ───────────────────────────────────────────────────────
+
+/// Constantes de rutas para evitar strings mágicos dispersos.
 class AppRoutes {
   AppRoutes._();
 
   static const String splash = '/';
+  static const String login = '/login';
+  static const String registro = '/registro';
   static const String taller = '/taller';
   static const String cliente = '/cliente';
 }
 
+// ── Router factory ────────────────────────────────────────────────────────────
+
 /// Fábrica del [GoRouter] de la aplicación.
 ///
-/// Recibe el [BuildContext] raíz para acceder al [AuthViewModel] inyectado
-/// por el [MultiProvider] del Composition Root.
-///
-/// Uso:
-/// ```dart
-/// final router = AppRouter.create(context);
-/// MaterialApp.router(routerConfig: router);
-/// ```
+/// Recibe [authViewModel] para que el router pueda escuchar cambios de estado
+/// y recalcular las redirecciones reactivamente.
 class AppRouter {
   AppRouter._();
 
-  /// Crea y configura el [GoRouter].
-  ///
-  /// [authViewModel] se utiliza para la lógica de redirección por rol
-  /// (se activará completamente en HU-02).
   static GoRouter create(AuthViewModel authViewModel) {
     return GoRouter(
       initialLocation: AppRoutes.splash,
       debugLogDiagnostics: true,
 
-      // ── Redirección global por estado de sesión ───────────────────────────
-      // Cuando el usuario no está autenticado, cualquier ruta protegida
-      // redirige al splash/login. En HU-02 se expandirá con lógica de rol.
+      // ── Listener reactivo ────────────────────────────────────────────────
+      // Cuando [AuthViewModel] notifica cambios, el router re-evalúa el guard.
+      refreshListenable: authViewModel,
+
+      // ── Guard global (redirección por estado y rol) ───────────────────────
       redirect: (BuildContext context, GoRouterState state) {
-        final isAuthenticated = authViewModel.isAuthenticated;
+        final status = authViewModel.status;
+        final role = authViewModel.currentRole;
+        final location = state.matchedLocation;
 
-        // Rutas que requieren sesión activa.
-        final protectedRoutes = [AppRoutes.taller, AppRoutes.cliente];
-        final isProtected = protectedRoutes.contains(state.matchedLocation);
+        // Rutas públicas (no requieren sesión).
+        const publicRoutes = [
+          AppRoutes.splash,
+          AppRoutes.login,
+          AppRoutes.registro,
+        ];
+        final isPublic = publicRoutes.contains(location);
 
-        if (isProtected && !isAuthenticated) {
-          // Redirigir al splash/login si no hay sesión.
-          return AppRoutes.splash;
+        // Aún inicializando: dejamos pasar al splash.
+        if (status == AuthStatus.initial) {
+          return location == AppRoutes.splash ? null : AppRoutes.splash;
         }
 
-        // Sin redirección necesaria.
-        return null;
+        // Sin sesión: redirigir a login (excepto rutas públicas).
+        if (status == AuthStatus.unauthenticated ||
+            status == AuthStatus.error) {
+          return isPublic ? null : AppRoutes.login;
+        }
+
+        // Con sesión activa en ruta pública (login/registro): redirigir
+        // automáticamente al área correspondiente al rol.
+        if (status == AuthStatus.authenticated && isPublic) {
+          return _homeForRole(role);
+        }
+
+        // Con sesión: verificar que el rol coincide con la ruta protegida.
+        if (status == AuthStatus.authenticated) {
+          if (location == AppRoutes.taller && role != UserRole.taller) {
+            return _homeForRole(role);
+          }
+          if (location == AppRoutes.cliente && role != UserRole.cliente) {
+            return _homeForRole(role);
+          }
+        }
+
+        return null; // Sin redirección.
       },
 
       routes: [
-        // ── Raíz / Splash ─────────────────────────────────────────────────
+        // ── Splash ────────────────────────────────────────────────────────
         GoRoute(
           path: AppRoutes.splash,
           name: 'splash',
           builder: (context, state) => const SplashScreen(),
         ),
 
-        // ── Área de Taller (artesano / dueño) ─────────────────────────────
+        // ── Autenticación ─────────────────────────────────────────────────
+        GoRoute(
+          path: AppRoutes.login,
+          name: 'login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.registro,
+          name: 'registro',
+          builder: (context, state) => const RegistroScreen(),
+        ),
+
+        // ── Área Taller ───────────────────────────────────────────────────
         GoRoute(
           path: AppRoutes.taller,
           name: 'taller',
           builder: (context, state) => const TallerHomeScreen(),
         ),
 
-        // ── Área de Cliente (comprador) ───────────────────────────────────
+        // ── Área Cliente ──────────────────────────────────────────────────
         GoRoute(
           path: AppRoutes.cliente,
           name: 'cliente',
@@ -95,12 +139,25 @@ class AppRouter {
       // ── Pantalla de error global ──────────────────────────────────────────
       errorBuilder: (context, state) => Scaffold(
         body: Center(
-          child: Text(
-            'Ruta no encontrada: ${state.error}',
-            style: Theme.of(context).textTheme.bodyLarge,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Página no encontrada.\n${state.error}',
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  /// Devuelve la ruta de inicio según el [role] del usuario.
+  static String _homeForRole(UserRole? role) {
+    return switch (role) {
+      UserRole.taller => AppRoutes.taller,
+      UserRole.cliente => AppRoutes.cliente,
+      null => AppRoutes.login,
+    };
   }
 }
