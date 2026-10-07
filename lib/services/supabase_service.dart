@@ -1,30 +1,22 @@
 // lib/services/supabase_service.dart
 //
 // Servicio centralizado de Supabase implementado como Singleton.
-// Los ViewModels y Repositorios NO instancian Supabase directamente;
-// obtienen el cliente a través de [SupabaseService.client].
 //
 // ⚠️  Las credenciales de abajo son FICTICIAS (placeholders).
-//     En producción deben provenir de variables de entorno o de un
-//     archivo .env ignorado por git (p. ej. usando el paquete `envied`).
+//     Reemplazar con las credenciales reales del proyecto Supabase.
+//     En producción deben provenir de variables de entorno.
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Configuración del cliente de Supabase.
-///
-/// Inicializar llamando a [SupabaseService.initialize()] antes de
-/// ejecutar [runApp()].
 class SupabaseService {
   SupabaseService._();
 
-  // ── Credenciales (placeholders) ─────────────────────────────────────────
+  // ── Credenciales ─────────────────────────────────────────────────────────
   // TODO: Reemplazar con las credenciales reales del proyecto Supabase.
-  //       Nunca incluir credenciales reales en control de versiones.
   static const String _supabaseUrl = 'https://xxxxxxxxxxxxxxxxxxx.supabase.co';
   static const String _supabaseAnonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.PLACEHOLDER';
-
-  // ── Singleton ────────────────────────────────────────────────────────────
 
   /// Acceso directo al [SupabaseClient] después de [initialize()].
   static SupabaseClient get client => Supabase.instance.client;
