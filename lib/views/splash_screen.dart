@@ -1,25 +1,22 @@
 // lib/views/splash_screen.dart
 //
-// Pantalla de arranque (Splash).
-// Verifica la sesión y redirige al área correspondiente según el rol.
-// En HU-01 actúa como pantalla inicial que valida la sesión dummy.
+// Pantalla de arranque (Splash) – actualizada HU-02.
+//
+// Con el guard reactivo del router, esta pantalla solo necesita:
+//   1. Mostrar la animación de entrada.
+//   2. Llamar a checkSession() del AuthViewModel.
+// El router detecta el cambio de estado y redirige automáticamente.
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/user_model.dart';
-import '../router/app_router.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 /// Pantalla de inicio / splash de Barro Vivo.
 ///
-/// Muestra el logotipo mientras se verifica si existe una sesión activa.
-/// Al terminar la verificación redirige a:
-///   – [AppRoutes.taller]  si el rol es [UserRole.taller].
-///   – [AppRoutes.cliente] si el rol es [UserRole.cliente].
-///   – Permanece aquí (futuro login) si no hay sesión.
+/// Llama a [AuthViewModel.checkSession] y el [GoRouter] se encarga
+/// de redirigir al destino correcto vía el guard global.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -36,7 +33,6 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Animación de entrada del logotipo.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -44,26 +40,10 @@ class _SplashScreenState extends State<SplashScreen>
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    // Verificar sesión al montar la pantalla.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkSession());
-  }
-
-  Future<void> _checkSession() async {
-    final authVM = context.read<AuthViewModel>();
-    await authVM.checkSession();
-
-    if (!mounted) return;
-
-    // Redirigir según estado de autenticación y rol.
-    if (authVM.isAuthenticated && authVM.currentUser != null) {
-      switch (authVM.currentUser!.role) {
-        case UserRole.taller:
-          context.go(AppRoutes.taller);
-        case UserRole.cliente:
-          context.go(AppRoutes.cliente);
-      }
-    }
-    // Si no hay sesión, permanece en la pantalla (aquí irá el login en HU-02).
+    // Verifica sesión al montar; el router reacciona automáticamente.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthViewModel>().checkSession();
+    });
   }
 
   @override
@@ -82,7 +62,6 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Ícono representativo del taller (placeholder visual).
               Container(
                 width: 120,
                 height: 120,
