@@ -76,9 +76,12 @@ class AppRouter {
           return location == AppRoutes.splash ? null : AppRoutes.splash;
         }
 
-        // Sin sesión: redirigir a login (excepto rutas públicas).
+        // Sin sesión: redirigir a login.
         if (status == AuthStatus.unauthenticated ||
             status == AuthStatus.error) {
+          // Si estamos en el Splash, debemos enviarlo obligatoriamente al login.
+          if (location == AppRoutes.splash) return AppRoutes.login;
+          // Si ya está en login o registro (rutas públicas), lo dejamos ahí.
           return isPublic ? null : AppRoutes.login;
         }
 
