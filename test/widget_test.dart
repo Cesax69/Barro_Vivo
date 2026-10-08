@@ -1,30 +1,42 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:barro_vivo/main.dart';
+import 'package:barro_vivo/models/user_model.dart';
+import 'package:barro_vivo/repositories/auth_repository.dart';
+
+class _FakeAuthRepository implements AuthRepository {
+  @override
+  Future<UserModel?> getCurrentUser() async => null;
+
+  @override
+  Future<UserModel> signIn({
+    required String email,
+    required String password,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<UserModel> signUp({
+    required String email,
+    required String password,
+    required UserRole role,
+    String? displayName,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> signOut() async {}
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Barro Vivo smoke test', (WidgetTester tester) async {
+    final fakeRepo = _FakeAuthRepository();
+    await tester.pumpWidget(BarroVivoApp(authRepository: fakeRepo));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Barro Vivo'), findsOneWidget);
+    expect(find.text('Talavería Artesanal'), findsOneWidget);
   });
 }
+
