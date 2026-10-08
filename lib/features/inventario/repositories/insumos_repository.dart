@@ -56,16 +56,16 @@ abstract class InsumosRepository {
 
 /// Implementación concreta de [InsumosRepository] conectada a Supabase.
 class SupabaseInsumosRepository implements InsumosRepository {
-  SupabaseInsumosRepository({supa.SupabaseClient? client})
-      : _client = client ?? SupabaseService.client;
+  SupabaseInsumosRepository({this.client});
 
-  final supa.SupabaseClient _client;
+  final supa.SupabaseClient? client;
+  supa.SupabaseClient get _resolvedClient => client ?? SupabaseService.client;
   static const String _tabla = 'materias_primas';
 
   @override
   Future<List<MateriaPrima>> getMateriasPrimas() async {
     try {
-      final List<dynamic> response = await _client
+      final List<dynamic> response = await _resolvedClient
           .from(_tabla)
           .select()
           .eq('activo', true)
@@ -97,7 +97,7 @@ class SupabaseInsumosRepository implements InsumosRepository {
         'activo': true,
       };
 
-      final response = await _client
+      final response = await _resolvedClient
           .from(_tabla)
           .insert(payload)
           .select()
@@ -122,7 +122,7 @@ class SupabaseInsumosRepository implements InsumosRepository {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      final response = await _client
+      final response = await _resolvedClient
           .from(_tabla)
           .update(payload)
           .eq('id', materiaPrima.id)
@@ -140,7 +140,7 @@ class SupabaseInsumosRepository implements InsumosRepository {
   @override
   Future<void> darDeBajaMateriaPrima(String id) async {
     try {
-      await _client.from(_tabla).update({
+      await _resolvedClient.from(_tabla).update({
         'activo': false,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', id);
