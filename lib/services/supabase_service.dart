@@ -14,16 +14,9 @@ class SupabaseService {
   SupabaseService._();
 
   // ── Credenciales ─────────────────────────────────────────────────────────
-  // Permite inyección vía --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
-  // con fallback a placeholders para desarrollo local inicial.
-  static const String _supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: 'https://xxxxxxxxxxxxxxxxxxx.supabase.co',
-  );
-  static const String _supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.PLACEHOLDER',
-  );
+  // Se inyectan en compilación/ejecución mediante .env (--dart-define-from-file=.env)
+  static const String _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
   /// Acceso directo al [SupabaseClient] después de [initialize()].
   static SupabaseClient get client => Supabase.instance.client;
