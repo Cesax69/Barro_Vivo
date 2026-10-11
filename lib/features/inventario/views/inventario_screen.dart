@@ -12,6 +12,7 @@ import '../viewmodels/inventario_viewmodel.dart';
 import 'widgets/confirmar_baja_dialog.dart';
 import 'widgets/materia_prima_card.dart';
 import 'widgets/materia_prima_form_sheet.dart';
+import 'widgets/resumen_alertas_banner.dart';
 
 class InventarioScreen extends StatefulWidget {
   const InventarioScreen({super.key});
@@ -72,6 +73,19 @@ class _InventarioScreenState extends State<InventarioScreen> {
       appBar: AppBar(
         title: const Text('Materias Primas'),
         actions: [
+          if (vm.tieneAlertasStock)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Badge.count(
+                count: vm.totalAlertasStock,
+                backgroundColor: const Color(0xFFD32F2F),
+                child: IconButton(
+                  tooltip: '${vm.totalAlertasStock} alertas activas de stock mínimo',
+                  icon: const Icon(Icons.warning_amber_rounded),
+                  onPressed: () => vm.toggleFiltroSoloAlertas(),
+                ),
+              ),
+            ),
           IconButton(
             tooltip: 'Recargar inventario',
             icon: const Icon(Icons.refresh_rounded),
@@ -201,56 +215,65 @@ class _InventarioScreenState extends State<InventarioScreen> {
             );
           }
 
-          // 4. Lista activa de materias primas
-          final insumos = vm.insumos;
-          final insumosBajos = vm.insumosConStockBajo;
+          // 4. Lista activa de materias primas con soporte para alertas (HU-04)
+          final insumos = vm.insumosVisibles;
+          final totalOriginal = vm.totalInsumos;
+          final filtrandoSoloAlertas = vm.filtrarSoloAlertas;
 
           return RefreshIndicator(
             color: AppColors.cobaltBlue,
             onRefresh: () => vm.cargarInsumos(),
             child: ListView.builder(
-              padding: const EdgeInsets.only(top: 12, bottom: 90),
-              itemCount: insumos.length + 1, // +1 para la cabecera con resumen
+              padding: const EdgeInsets.only(top: 8, bottom: 90),
+              itemCount: (filtrandoSoloAlertas && insumos.isEmpty)
+                  ? 2
+                  : insumos.length + 1, // +1 para el banner de resumen superior
               itemBuilder: (context, index) {
-                // Elemento 0: Tarjeta / Chips de métricas de resumen
+                // Elemento 0: Componente visual de resumen de alertas (HU-04)
                 if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    child: Row(
-                      children: [
-                        // Chip: Total insumos
-                        Chip(
-                          avatar: const Icon(Icons.inventory_2_rounded, size: 16),
-                          label: Text(
-                            '${insumos.length} ${insumos.length == 1 ? 'materia prima' : 'materias primas'}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          backgroundColor: Colors.white,
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        const SizedBox(width: 8),
+                  return const ResumenAlertasBanner();
+                }
 
-                        // Chip: Alerta de stock bajo (si hay alguno)
-                        if (insumosBajos.isNotEmpty)
-                          Chip(
-                            avatar: const Icon(
-                              Icons.warning_amber_rounded,
-                              size: 16,
-                              color: AppColors.terracotta,
-                            ),
-                            label: Text(
-                              '${insumosBajos.length} con stock bajo',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.terracotta,
-                              ),
-                            ),
-                            backgroundColor: AppColors.terracotta.withValues(alpha: 0.1),
-                            side: BorderSide(
-                              color: AppColors.terracotta.withValues(alpha: 0.3),
+                // Estado vacío cuando el filtro de solo alertas está activo pero no hay alertas
+                if (filtrandoSoloAlertas && insumos.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 52,
+                            color: Colors.green.shade600,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No hay insumos en alerta',
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            'Todas las materias primas ($totalOriginal) cumplen con el stock mínimo requerido.',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: Colors.black54,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.cobaltBlue,
+                              side: const BorderSide(color: AppColors.cobaltBlue),
+                            ),
+                            onPressed: () => vm.setFiltroSoloAlertas(false),
+                            icon: const Icon(Icons.inventory_2_outlined),
+                            label: const Text('Ver todas las materias primas'),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
