@@ -50,9 +50,47 @@ class InventarioViewModel extends ChangeNotifier {
   bool get hasError => _errorMessage != null;
   int get totalInsumos => _insumos.length;
 
+  // ── Alertas de Stock Mínimo (HU-04) ──────────────────────────────────────────
+
   /// Retorna los insumos cuyo stock está en o por debajo del stock mínimo.
   List<MateriaPrima> get insumosConStockBajo =>
       _insumos.where((i) => i.stockBajo).toList();
+
+  /// Alias semántico para obtener materias primas con alertas activas (HU-04).
+  List<MateriaPrima> get materiasPrimasEnAlerta => insumosConStockBajo;
+
+  /// Contador numérico total de alertas activas por stock mínimo (HU-04).
+  int get totalAlertasStock => insumosConStockBajo.length;
+
+  /// Indica si existe al menos una alerta activa de stock mínimo (HU-04).
+  bool get tieneAlertasStock => totalAlertasStock > 0;
+
+  /// Determina si una materia prima específica se encuentra en estado de alerta (HU-04).
+  bool esInsumoEnAlerta(MateriaPrima insumo) => insumo.stockBajo;
+
+  // ── Filtro de Vista (HU-04) ──────────────────────────────────────────────────
+  bool _filtrarSoloAlertas = false;
+
+  /// Indica si actualmente se están filtrando únicamente insumos en alerta.
+  bool get filtrarSoloAlertas => _filtrarSoloAlertas;
+
+  /// Lista de insumos a desplegar en la vista aplicando el filtro si está activo.
+  List<MateriaPrima> get insumosVisibles =>
+      _filtrarSoloAlertas ? insumosConStockBajo : insumos;
+
+  /// Alterna el filtro para visualizar únicamente materias primas en alerta.
+  void toggleFiltroSoloAlertas() {
+    _filtrarSoloAlertas = !_filtrarSoloAlertas;
+    notifyListeners();
+  }
+
+  /// Establece explícitamente el filtro de alertas.
+  void setFiltroSoloAlertas(bool soloAlertas) {
+    if (_filtrarSoloAlertas != soloAlertas) {
+      _filtrarSoloAlertas = soloAlertas;
+      notifyListeners();
+    }
+  }
 
   // ── Operaciones de negocio ──────────────────────────────────────────────────
 

@@ -61,6 +61,12 @@ class MateriaPrima {
   /// Indica si el stock actual está por debajo o igual al stock mínimo.
   bool get stockBajo => stockActual <= stockMinimo;
 
+  /// Alias descriptivo para indicar si el insumo está en o por debajo del stock mínimo (HU-04).
+  bool get estaEnStockMinimo => stockBajo;
+
+  /// Cantidad faltante para alcanzar el stock mínimo requerido.
+  double get deficitStock => stockBajo ? (stockMinimo - stockActual) : 0.0;
+
   /// Crea una instancia a partir del mapa JSON devuelto por Supabase.
   factory MateriaPrima.fromJson(Map<String, dynamic> json) {
     return MateriaPrima(
