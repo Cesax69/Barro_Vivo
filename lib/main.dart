@@ -18,6 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'features/inventario/repositories/insumos_repository.dart';
+import 'features/inventario/viewmodels/inventario_viewmodel.dart';
 import 'repositories/auth_repository.dart';
 import 'router/app_router.dart';
 import 'services/supabase_service.dart';
@@ -36,9 +38,15 @@ Future<void> main() async {
   // ── 2. Construir las dependencias de la capa de datos ──────────────────
   // Los repositorios concretos se crean aquí y se inyectan hacia arriba.
   final AuthRepository authRepository = SupabaseAuthRepository();
+  final InsumosRepository insumosRepository = SupabaseInsumosRepository();
 
   // ── 3. Levantar la aplicación ──────────────────────────────────────────
-  runApp(BarroVivoApp(authRepository: authRepository));
+  runApp(
+    BarroVivoApp(
+      authRepository: authRepository,
+      insumosRepository: insumosRepository,
+    ),
+  );
 }
 
 /// Raíz de la aplicación Barro Vivo.
@@ -49,10 +57,14 @@ class BarroVivoApp extends StatefulWidget {
   const BarroVivoApp({
     super.key,
     required this.authRepository,
+    this.insumosRepository,
   });
 
   /// Repositorio de autenticación inyectado desde [main].
   final AuthRepository authRepository;
+
+  /// Repositorio de insumos inyectado desde [main] o pruebas.
+  final InsumosRepository? insumosRepository;
 
   @override
   State<BarroVivoApp> createState() => _BarroVivoAppState();
@@ -62,16 +74,21 @@ class _BarroVivoAppState extends State<BarroVivoApp> {
   // El ViewModel se crea aquí para que el GoRouter pueda escucharlo
   // y recalcular las redirecciones cuando el estado cambie.
   late final AuthViewModel _authViewModel;
+  late final InventarioViewModel _inventarioViewModel;
 
   @override
   void initState() {
     super.initState();
     _authViewModel = AuthViewModel(authRepository: widget.authRepository);
+    _inventarioViewModel = InventarioViewModel(
+      insumosRepository: widget.insumosRepository ?? SupabaseInsumosRepository(),
+    );
   }
 
   @override
   void dispose() {
     _authViewModel.dispose();
+    _inventarioViewModel.dispose();
     super.dispose();
   }
 
@@ -83,11 +100,17 @@ class _BarroVivoAppState extends State<BarroVivoApp> {
       providers: [
         // ── Capa de Repositorios ──────────────────────────────────────────
         Provider<AuthRepository>.value(value: widget.authRepository),
+        Provider<InsumosRepository>.value(
+          value: widget.insumosRepository ?? SupabaseInsumosRepository(),
+        ),
 
         // ── Capa de ViewModels ────────────────────────────────────────────
         // Se usa ChangeNotifierProvider para que los widgets puedan
         // suscribirse y reconstruirse cuando el estado cambia.
         ChangeNotifierProvider<AuthViewModel>.value(value: _authViewModel),
+        ChangeNotifierProvider<InventarioViewModel>.value(
+          value: _inventarioViewModel,
+        ),
       ],
       child: _AppRouter(authViewModel: _authViewModel),
     );
