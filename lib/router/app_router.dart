@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/inventario/views/inventario_screen.dart';
 import '../models/user_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../views/splash_screen.dart';
@@ -36,6 +37,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String registro = '/registro';
   static const String taller = '/taller';
+  static const String inventario = '/taller/inventario';
   static const String cliente = '/cliente';
 }
 
@@ -93,10 +95,10 @@ class AppRouter {
 
         // Con sesión: verificar que el rol coincide con la ruta protegida.
         if (status == AuthStatus.authenticated) {
-          if (location == AppRoutes.taller && role != UserRole.taller) {
+          if (location.startsWith('/taller') && role != UserRole.taller) {
             return _homeForRole(role);
           }
-          if (location == AppRoutes.cliente && role != UserRole.cliente) {
+          if (location.startsWith('/cliente') && role != UserRole.cliente) {
             return _homeForRole(role);
           }
         }
@@ -129,6 +131,11 @@ class AppRouter {
           path: AppRoutes.taller,
           name: 'taller',
           builder: (context, state) => const TallerHomeScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.inventario,
+          name: 'inventario',
+          builder: (context, state) => const InventarioScreen(),
         ),
 
         // ── Área Cliente ──────────────────────────────────────────────────
