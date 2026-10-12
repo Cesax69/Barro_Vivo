@@ -127,4 +127,165 @@ void main() {
       expect(vm.totalInsumos, 0);
     });
   });
+
+  group('InventarioViewModel HU-04 Alertas de Stock Mínimo Tests', () {
+    late _FakeInsumosRepo repo;
+    late InventarioViewModel vm;
+
+    setUp(() {
+      repo = _FakeInsumosRepo();
+      vm = InventarioViewModel(insumosRepository: repo);
+    });
+
+    test('Estado inicial no tiene alertas y contador es 0', () {
+      expect(vm.totalAlertasStock, 0);
+      expect(vm.tieneAlertasStock, isFalse);
+      expect(vm.materiasPrimasEnAlerta, isEmpty);
+      expect(vm.insumosConStockBajo, isEmpty);
+      expect(vm.filtrarSoloAlertas, isFalse);
+    });
+
+    test('Evalúa reactivamente insumos comparando stockActual con stockMinimo', () async {
+      await vm.crearInsumo(
+        nombre: 'Barro rojo',
+        unidad: UnidadMedida.kg,
+        stockActual: 20.0,
+        stockMinimo: 10.0,
+      );
+      await vm.crearInsumo(
+        nombre: 'Esmalte blanco',
+        unidad: UnidadMedida.lt,
+        stockActual: 5.0,
+        stockMinimo: 5.0, // En stock mínimo exacto -> debe alertar
+      );
+      await vm.crearInsumo(
+        nombre: 'Pigmento óxido',
+        unidad: UnidadMedida.kg,
+        stockActual: 1.0,
+        stockMinimo: 3.0, // Por debajo del mínimo -> debe alertar
+      );
+
+      expect(vm.totalInsumos, 3);
+      expect(vm.totalAlertasStock, 2);
+      expect(vm.tieneAlertasStock, isTrue);
+
+      final alertas = vm.materiasPrimasEnAlerta;
+      expect(alertas.length, 2);
+      expect(alertas.map((i) => i.nombre), containsAll(['Esmalte blanco', 'Pigmento óxido']));
+
+      // Comprobación de método helper
+      expect(vm.esInsumoEnAlerta(alertas.first), isTrue);
+    });
+
+    test('Actualizar stock hacia arriba resuelve la alerta de forma reactiva', () async {
+      await vm.crearInsumo(
+        nombre: 'Caolín',
+        unidad: UnidadMedida.kg,
+        stockActual: 4.0,
+        stockMinimo: 10.0,
+      );
+
+      expect(vm.totalAlertasStock, 1);
+      expect(vm.tieneAlertasStock, isTrue);
+
+      // Reabastecer Caolín por encima del mínimo
+      final caolin = vm.insumos.first;
+      await vm.actualizarInsumo(caolin.copyWith(stockActual: 15.0));
+
+      expect(vm.totalAlertasStock, 0);
+      expect(vm.tieneAlertasStock, isFalse);
+      expect(vm.materiasPrimasEnAlerta, isEmpty);
+    });
+
+    test('Actualizar stock hacia abajo activa la alerta de forma reactiva', () async {
+      await vm.crearInsumo(
+        nombre: 'Frita cerámica',
+        unidad: UnidadMedida.kg,
+        stockActual: 20.0,
+        stockMinimo: 10.0,
+      );
+
+      expect(vm.totalAlertasStock, 0);
+      expect(vm.tieneAlertasStock, isFalse);
+
+      // Consumir insumo hasta llegar a 8 kg (< 10 kg)
+      final frita = vm.insumos.first;
+      await vm.actualizarInsumo(frita.copyWith(stockActual: 8.0));
+
+      expect(vm.totalAlertasStock, 1);
+      expect(vm.tieneAlertasStock, isTrue);
+      expect(vm.materiasPrimasEnAlerta.first.nombre, 'Frita cerámica');
+    });
+
+    test('Dar de baja un insumo en alerta descuenta la alerta del contador', () async {
+      await vm.crearInsumo(
+        nombre: 'Esmalte transparente',
+        unidad: UnidadMedida.lt,
+        stockActual: 1.0,
+        stockMinimo: 5.0,
+      );
+
+      expect(vm.totalAlertasStock, 1);
+
+      final id = vm.insumos.first.id;
+      await vm.eliminarInsumo(id);
+
+      expect(vm.totalAlertasStock, 0);
+      expect(vm.tieneAlertasStock, isFalse);
+    });
+
+    test('Filtro de solo alertas actualiza insumosVisibles correctamente', () async {
+      await vm.crearInsumo(
+        nombre: 'Barro rojo',
+        unidad: UnidadMedida.kg,
+        stockActual: 50.0,
+        stockMinimo: 10.0,
+      );
+      await vm.crearInsumo(
+        nombre: 'Esmalte cobalto',
+        unidad: UnidadMedida.lt,
+        stockActual: 2.0,
+        stockMinimo: 5.0,
+      );
+
+      expect(vm.insumosVisibles.length, 2);
+
+      // Activar filtro
+      vm.toggleFiltroSoloAlertas();
+      expect(vm.filtrarSoloAlertas, isTrue);
+      expect(vm.insumosVisibles.length, 1);
+      expect(vm.insumosVisibles.first.nombre, 'Esmalte cobalto');
+
+      // Desactivar filtro
+      vm.setFiltroSoloAlertas(false);
+      expect(vm.filtrarSoloAlertas, isFalse);
+      expect(vm.insumosVisibles.length, 2);
+    });
+
+    test('MateriaPrima calcula correctamente deficitStock y estaEnStockMinimo', () {
+      const mpAlerta = MateriaPrima(
+        id: '1',
+        nombre: 'Insumo Crítico',
+        unidad: UnidadMedida.kg,
+        stockActual: 3.5,
+        stockMinimo: 10.0,
+      );
+
+      expect(mpAlerta.estaEnStockMinimo, isTrue);
+      expect(mpAlerta.stockBajo, isTrue);
+      expect(mpAlerta.deficitStock, 6.5);
+
+      const mpOptima = MateriaPrima(
+        id: '2',
+        nombre: 'Insumo Óptimo',
+        unidad: UnidadMedida.kg,
+        stockActual: 15.0,
+        stockMinimo: 10.0,
+      );
+
+      expect(mpOptima.estaEnStockMinimo, isFalse);
+      expect(mpOptima.stockBajo, isFalse);
+      expect(mpOptima.deficitStock, 0.0);
+    });
+  });
 }
