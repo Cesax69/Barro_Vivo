@@ -55,7 +55,7 @@ En el panel de tu proyecto Supabase:
 Puedes registrar esta cuenta directamente desde la pantalla de **Registro** de la app o crearla en el panel de Supabase:
 
 * **Rol:** `Artesano / Taller`
-* **Correo:** `taller@barrovivo.com`
-* **Contraseña:** `BarroVivo123!`
+* **Correo:** `maestro@barrovivo.com`
+* **Contraseña:** `Linux2024!`
 
 *(El rol de Taller es el que tiene acceso a las pantallas de gestión de inventario y materias primas).*
