@@ -1,13 +1,13 @@
 // lib/views/taller/taller_home_screen.dart
 //
-// Pantalla de inicio del área de Taller (artesano / dueño).
-// PLACEHOLDER – HU-01: solo muestra la estructura base.
-// El contenido real se implementará en historias de usuario posteriores.
+// Pantalla principal del área de Taller (artesano / dueño).
+// Acceso al módulo de inventario de materias primas – HU-03.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../features/inventario/viewmodels/inventario_viewmodel.dart';
 import '../../router/app_router.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -15,16 +15,35 @@ import '../../viewmodels/auth_viewmodel.dart';
 /// Pantalla principal del área de Taller.
 ///
 /// Accesible solo para usuarios con rol [UserRole.taller].
-/// La protección de ruta se gestiona en [AppRouter].
-class TallerHomeScreen extends StatelessWidget {
+class TallerHomeScreen extends StatefulWidget {
   const TallerHomeScreen({super.key});
+
+  @override
+  State<TallerHomeScreen> createState() => _TallerHomeScreenState();
+}
+
+class _TallerHomeScreenState extends State<TallerHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final invVM = context.read<InventarioViewModel>();
+      if (invVM.status == InventarioStatus.initial) {
+        invVM.cargarInsumos();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
+    final inventarioVM = context.watch<InventarioViewModel>();
     final textTheme = Theme.of(context).textTheme;
+    final totalInsumos = inventarioVM.totalInsumos;
+    final insumosBajos = inventarioVM.insumosConStockBajo.length;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Barro Vivo – Taller'),
         actions: [
@@ -38,50 +57,226 @@ class TallerHomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '¡Bienvenido al Taller!',
-              style: textTheme.headlineMedium?.copyWith(
-                color: AppColors.cobaltBlue,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Módulo en construcción. Las funcionalidades del '
-              'taller se implementarán en las próximas HU.',
-              style: textTheme.bodyLarge?.copyWith(color: Colors.black54),
-            ),
-            const SizedBox(height: 32),
-
-            // Tarjeta informativa del usuario actual (debug)
-            if (authVM.currentUser != null)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.person_rounded,
-                      color: AppColors.cobaltBlue),
-                  title: Text(authVM.currentUser!.email),
-                  subtitle: Text('Rol: ${authVM.currentUser!.role.name}'),
+            // Saludo y encabezado
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.cobaltBlue.withValues(alpha: 0.12),
+                  child: const Icon(Icons.person_rounded, color: AppColors.cobaltBlue),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '¡Hola, ${authVM.currentUser?.displayName ?? 'Maestro Artesano'}!',
+                        style: textTheme.titleLarge?.copyWith(
+                          color: AppColors.cobaltBlue,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        authVM.currentUser?.email ?? '',
+                        style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            Text(
+              'Panel de Gestión',
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-
-            const Spacer(),
-
-            // Placeholder de acciones futuras
-            ElevatedButton.icon(
-              onPressed: null, // se habilitará en HUs posteriores
-              icon: const Icon(Icons.inventory_2_rounded),
-              label: const Text('Gestionar Inventario (próximamente)'),
             ),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.bar_chart_rounded),
-              label: const Text('Ver Reportes (próximamente)'),
+
+            // Tarjeta Destacada: Inventario de Materias Primas (HU-03)
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: insumosBajos > 0
+                      ? AppColors.terracotta.withValues(alpha: 0.5)
+                      : AppColors.cobaltBlue.withValues(alpha: 0.2),
+                  width: insumosBajos > 0 ? 1.5 : 1,
+                ),
+              ),
+              color: Colors.white,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => context.push(AppRoutes.inventario),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.cobaltBlue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.inventory_2_rounded,
+                              color: AppColors.cobaltBlue,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Materias Primas',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.cobaltBlue,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Gestión de stock, altas, ediciones y bajas de insumos.',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: Colors.black54,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: Colors.black38,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 14),
+
+                      // Métricas rápidas del inventario
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              inventarioVM.isLoading && totalInsumos == 0
+                                  ? 'Cargando...'
+                                  : '$totalInsumos ${totalInsumos == 1 ? 'insumo activo' : 'insumos activos'}',
+                              style: textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          if (insumosBajos > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.terracotta.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 14,
+                                    color: AppColors.terracotta,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$insumosBajos por agotarse',
+                                    style: textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.terracotta,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tarjetas de módulos futuros (Próximamente)
+            Opacity(
+              opacity: 0.65,
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.local_fire_department_rounded,
+                          color: Colors.black45,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Producción y Horno',
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Control de quemas y piezas en proceso (próximamente).',
+                              style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
